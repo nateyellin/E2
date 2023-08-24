@@ -1,0 +1,92 @@
+---
+title: "E2 Pitch-Desk Script"
+output: html_document
+---
+
+```{r Installing the Packages}
+
+##install.packages("tidyverse")  // to execute, just remove the hashtags in front of the line [# = comment]
+##install.packages("readr")      // to execute, just remove the hashtags in front of the line [# = comment]
+##install.packages("data.table") // to execute, just remove the hashtags in front of the line [# = comment]
+##install.packages("dyplr")      // to execute, just remove the hashtags in front of the line [# = comment]
+```
+
+```{r Call Packages}
+library(tidyverse)
+library(readr)
+library(data.table)
+library(dyplr)
+
+```
+
+```{r Define CSV files}
+csv_files <- c("LEAD - Pitch 2 (Responses).xlsx - Form Responses 1.csv")
+LEAD_Pitch_2_Responses_xlsx_Form_Responses_1 <- read_csv("LEAD - Pitch 2 (Responses).xlsx - Form Responses 1.csv")
+
+
+```
+
+```{r Define Desired Companies}
+
+desired_teams <- c("Company 1", 
+                   "Company 2", 
+                   "Company 3", 
+                   "Company 4", 
+                   "Company 5", 
+                   "Company 6")
+
+# Company Names Omitted for Privacy
+
+
+```
+
+```{r Run the Function}
+# Loop through the CSV files
+for (csv_file in csv_files) {
+  # Read the CSV file
+  pitch2 <- read_csv(csv_file)
+
+# Filter the data based on desired_teams
+  pitch2 <- pitch2 %>%
+    filter(`Company Presenting:` %in% desired_teams)
+  
+  # Calculate category grade, gut grade, and net grade
+  pitch2 <- pitch2 %>%
+    rowwise() %>%
+    mutate(category_grade = (`Hook and Introduction` * 0.05 + 
+                               `Need and users` * 0.15 +
+                               `Company Mission` * 0.1 +
+                               `Solution/Product` * 0.2 +
+                               `Prototype` * 0.15 +
+                               `Market and Revenue model...15` * 0.1 +
+                               `Competition and Comparable products...17` * 0.1 +
+                               `Overall deck aesthetics` * 0.15),
+           gut_grade = `Gut Grade (70-100)`,
+           net_grade = 5 * category_grade + 0.5 * gut_grade)
+  
+  # Calculate teacher's final grade
+  teacher_df <- pitch2 %>% 
+    filter(`Your name` %in% c("Teacher Name 1", 
+                              "Teacher Name 2")) %>% 
+    summarize(`Company Presenting:` = `Company Presenting:`,
+              final_grade = 0.7 * net_grade)
+  
+  # Calculate student's final grade
+  student_df <- pitch2 %>% 
+    filter(`Your name` != "Teacher 1" 
+           & `Your name` != "Teacher 2") %>% 
+    group_by(`Company Presenting:`) %>% 
+    summarize(avg_net_grade = mean(net_grade))
+  
+  # Calculate final grades
+  final_grades <- left_join(student_df, 
+                            teacher_df, 
+                            by = "Company Presenting:") %>% 
+    mutate(final_grade = ifelse(is.na(final_grade), 0.3 * avg_net_grade, final_grade + 0.3 * avg_net_grade)) %>% 
+    select(`Company Presenting:`, 
+           final_grade)
+  
+ # Print the final grades
+  print(final_grades)
+}
+```
